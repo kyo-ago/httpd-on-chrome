@@ -1,0 +1,35 @@
+{
+	"name": "httpd on chrome",
+	"version": "0.0.1",
+	"manifest_version": 2,
+	"minimum_chrome_version": "25",
+	"icons": {
+		"48": "img/icon48.png"
+	},
+	"app": {
+		"background": {
+			"scripts": [
+				"/lib/heir.js",
+				"/lib/EventEmitter.js",
+				"/lib/micro-location.js",
+				"/lib/jsdeferred.js",
+				"/src/lib/utils.js",
+				"/src/lib/Response.js",
+				"/src/lib/Response/FileSystem.js",
+				"/src/lib/Response/Text.js",
+				"/src/proxy/SocketTable.js",
+				"/src/proxy/Header.js",
+				"/src/proxy/Http.js",
+				"/src/proxy/Waterfall.js",
+				"/src/proxy/Forwarder.js",
+				"/src/proxy/Listener.js",
+				"/src/background.js"
+			]
+		}
+	},
+	"permissions": [
+		"storage",
+		"contextMenus",
+		{"socket": ["tcp-listen", "tcp-connect"]}
+	]
+}

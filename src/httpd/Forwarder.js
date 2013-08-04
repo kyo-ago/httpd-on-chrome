@@ -1,0 +1,179 @@
+(function (exports) {
+	'use strict';
+
+	var Klass = function Forwarder (option) {
+		this.sockets = new SocketTable();
+
+		this.option = utils.extend({
+			'socketId' : undefined,
+			'timeout' : 30000
+		}, option);
+
+		if (!this.option.socketId) {
+			this.emitEvent('missing socketId', arguments);
+			return;
+		}
+		this.sockets.add('browser', this.option.socketId);
+		this.setTimeout();
+
+		this.request = undefined;
+		this.location = undefined;
+		this.response = undefined;
+	};
+	Klass.inherit(Waterfall);
+	var prop = Klass.prototype;
+
+	prop.methods = [
+		function browserSetNoDelay (done) {
+			var sid = this.sockets.get('browser');
+			chrome.socket.setNoDelay(sid, true, function () {
+				done();
+			}.bind(this));
+		},
+		function browserRead (done) {
+			var sid = this.sockets.get('browser');
+			chrome.socket.read(sid, function (evn) {
+				if (!evn.data.byteLength) {
+					this.disconnect();
+					return;
+				}
+				this.request = new HttpRequest(utils.ab2t(evn.data));
+				if (!this.request.isComplete()) {
+					this.browserRead(done);
+					return;
+				}
+				this.location = Location.parse(this.request.getURL());
+				done();
+			}.bind(this));
+		},
+		function serverRequest (done) {
+			chrome.socket.create('tcp', function (info) {
+				var sid = info.socketId;
+				this.sockets.add('server', sid);
+				done();
+			}.bind(this));
+		},
+		function serverConnect (done) {
+			var sid = this.sockets.get('server');
+			var loc = this.location;
+			var host = loc.hostname;
+			var port = loc.port;
+			if (!host) {
+				host = this.request.getHeader('host');
+				host = host.split(':');
+				port = host[1];
+				host = host[0];
+			}
+			if (!host) {
+				return;
+			}
+			port = parseInt(port) || 80;
+			chrome.socket.connect(sid, host, port, function (resultCode) {
+				if (resultCode === 0) {
+					done();
+					return;
+				}
+				// -105 is DNS resolution failed
+				if (resultCode !== -105 || resultCode !== -3) {
+					this.emitEvent('error', arguments);
+				}
+				this.disconnect();
+			}.bind(this));
+		},
+		function serverWrite (done) {
+			var sid = this.sockets.get('server');
+			var text = this.request.getText();
+			var len = text.length;
+			var buffer = utils.t2ab(text);
+			chrome.socket.write(sid, buffer, function (evn) {
+				if (evn.bytesWritten !== len) {
+					this.emitEvent('error', arguments);
+					return;
+				}
+				done();
+			}.bind(this));
+		},
+		function serverRead (done, response) {
+			response = response || '';
+			var sid = this.sockets.get('server');
+			chrome.socket.read(sid, function (evn) {
+				if (!evn.data.byteLength) {
+					this.sockets.remove('server');
+					done();
+					return;
+				}
+				var read_data = utils.ab2t(evn.data);
+				if (!this.response) {
+					response += read_data;
+					if (!response.match('\r\n\r\n')) {
+						this.serverRead(done, response);
+						return;
+					}
+					this.response = new HttpResponse(response);
+				} else {
+					this.response.body += read_data;
+					this.response.text = this.response.getHeaderText() + '\r\n\r\n' + this.response.body;
+				}
+				if (!this.response.isComplete()) {
+					this.serverRead(done);
+					return;
+				}
+				this.sockets.remove('server');
+				done();
+			}.bind(this));
+		},
+		function userFilter (done) {
+			Deferred.next(done);
+		},
+		function browserWrite (done) {
+			var text = this.response.getText();
+			var len = text.length;
+			var buffer = utils.t2ab(text);
+			var sid = this.sockets.get('browser');
+			chrome.socket.write(sid, buffer, function (evn) {
+				if (evn.bytesWritten !== len) {
+					this.emitEvent('error', arguments);
+					return;
+				}
+				done();
+			}.bind(this));
+		},
+		// calling "done" event
+		function done (done) {
+			this.disconnect();
+			done && done();
+		}
+	].map(function (method) {
+		return prop[method.name] = method;
+	});
+
+	prop.setTimeout = function () {
+		this.setTimeoutId = setTimeout(this.disconnect.bind(this), this.option.timeout);
+		this.addListener('close', this.clearTimeout.bind(this));
+	};
+	prop.clearTimeout = function () {
+		if (this.setTimeoutId) {
+			clearTimeout(this.setTimeoutId);
+			this.setTimeoutId = undefined;
+		}
+	};
+	prop.disconnect = function () {
+		this.sockets.removeAll();
+		this.deferred.cancel();
+	};
+	prop.setResponse = function (file) {
+		this.response = new HttpResponse(file.data || [
+			'HTTP/1.1 200 OK',
+			'Connection: close',
+			'Content-Length: ' + file.body.length,
+			'Content-Type: ' + file.type,
+			'Date: ' + (new Date).toUTCString(),
+			'Cache-control: private',
+			'',
+			file.body
+		].join('\r\n'));
+		return this;
+	};
+
+	exports[Klass.name] = Klass;
+})(this);
