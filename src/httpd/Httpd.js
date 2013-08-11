@@ -1,7 +1,7 @@
 (function (exports) {
 	'use strict';
 
-	var Klass = function Forwarder (option) {
+	var Klass = function Httpd (option) {
 		this.sockets = new SocketTable();
 
 		this.option = utils.extend({
