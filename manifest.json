@@ -21,7 +21,7 @@
 				"/src/proxy/Header.js",
 				"/src/proxy/Http.js",
 				"/src/proxy/Waterfall.js",
-				"/src/proxy/Forwarder.js",
+				"/src/proxy/Httpd.js",
 				"/src/proxy/Listener.js",
 				"/src/background.js"
 			]

@@ -1,9 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title></title>
-</head>
-<body>
-
-</body>
-</html>
+<div>
+    <a ng-href="#/settings">settings</a>
+    <form combobox>
+        <p>
+            <select ng-model="project" ng-options="p.name for p in projects">
+                <option value="">-- new project --</option>
+            </select>
+            <input type="submit" class="del" value="del">
+        </p>
+        <p>
+            <input type="text" ng-model="project.name" placeholder="project name">
+            <input type="text" ng-model="project.basePath" placeholder="base path">
+            <input type="submit" class="add" value="add">
+        </p>
+    </form>
+</div>

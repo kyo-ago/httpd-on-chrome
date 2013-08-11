@@ -47,83 +47,12 @@
 			}.bind(this));
 		},
 		function serverRequest (done) {
-			chrome.socket.create('tcp', function (info) {
-				var sid = info.socketId;
-				this.sockets.add('server', sid);
-				done();
-			}.bind(this));
 		},
 		function serverConnect (done) {
-			var sid = this.sockets.get('server');
-			var loc = this.location;
-			var host = loc.hostname;
-			var port = loc.port;
-			if (!host) {
-				host = this.request.getHeader('host');
-				host = host.split(':');
-				port = host[1];
-				host = host[0];
-			}
-			if (!host) {
-				return;
-			}
-			port = parseInt(port) || 80;
-			chrome.socket.connect(sid, host, port, function (resultCode) {
-				if (resultCode === 0) {
-					done();
-					return;
-				}
-				// -105 is DNS resolution failed
-				if (resultCode !== -105 || resultCode !== -3) {
-					this.emitEvent('error', arguments);
-				}
-				this.disconnect();
-			}.bind(this));
 		},
 		function serverWrite (done) {
-			var sid = this.sockets.get('server');
-			var text = this.request.getText();
-			var len = text.length;
-			var buffer = utils.t2ab(text);
-			chrome.socket.write(sid, buffer, function (evn) {
-				if (evn.bytesWritten !== len) {
-					this.emitEvent('error', arguments);
-					return;
-				}
-				done();
-			}.bind(this));
 		},
 		function serverRead (done, response) {
-			response = response || '';
-			var sid = this.sockets.get('server');
-			chrome.socket.read(sid, function (evn) {
-				if (!evn.data.byteLength) {
-					this.sockets.remove('server');
-					done();
-					return;
-				}
-				var read_data = utils.ab2t(evn.data);
-				if (!this.response) {
-					response += read_data;
-					if (!response.match('\r\n\r\n')) {
-						this.serverRead(done, response);
-						return;
-					}
-					this.response = new HttpResponse(response);
-				} else {
-					this.response.body += read_data;
-					this.response.text = this.response.getHeaderText() + '\r\n\r\n' + this.response.body;
-				}
-				if (!this.response.isComplete()) {
-					this.serverRead(done);
-					return;
-				}
-				this.sockets.remove('server');
-				done();
-			}.bind(this));
-		},
-		function userFilter (done) {
-			Deferred.next(done);
 		},
 		function browserWrite (done) {
 			var text = this.response.getText();

@@ -1,9 +1,3 @@
-/**
- * @license Klepto proxy
- * Copyright (C) 2013 @kyo_ago https://github.com/kyo-ago/klepto
- * License: GPL
- */
-
 (function (exports) {
 	'use strict';
 
