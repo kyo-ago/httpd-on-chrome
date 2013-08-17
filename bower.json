@@ -8,7 +8,7 @@
     ],
     "dependencies": {
         "jquery" : "git://github.com/components/jquery.git",
-        "angularjs-bower" : "git://github.com/mjaric/angularjs-bower.git",
+        "angular" : "~v1.0.7",
         "EventEmitter" : "git://github.com/Wolfy87/EventEmitter.git",
         "heir" : "git://github.com/Wolfy87/Heir.git",
         "micro-location" : "git://github.com/cho45/micro-location.js.git",

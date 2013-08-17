@@ -12,33 +12,47 @@ interface JQueryStatic {
 interface localStorage {
     projects : string;
 }
+interface IProject {
+    name : string;
+    basePath : string;
+    entries : any[];
+}
+interface IProjectScope extends ng.IScope {
+    projects : IProject[];
+    project : IProject;
+}
 
 jQuery.event.props.push('dataTransfer');
 
 angular.module('httpd', [])
-    .directive('filedrop', [() => {
-        return ($scope, $element, attrs) => {
-            $element
-                .on('dragenter dragover', false)
-                .on('drop', (evn) => {
-                    var dt = evn.dataTransfer;
-                    if (!dt.items.length) {
-                        return;
-                    }
-                    evn.preventDefault();
-                    $scope.$emit('FileDrop', [
-                        [].slice.apply(dt.items).map( (item) => item.webkitGetAsEntry() )
-                    ]);
-                })
-            ;
-        };
+    .service('filedrop', [function () {
+        this.getEntries = () => {};
+        (<JQuery>angular.element('body'))
+            .on('dragenter dragover', false)
+            .on('drop', (evn) => {
+                var dt = evn.dataTransfer;
+                if (!dt.items.length) {
+                    return;
+                }
+                evn.preventDefault();
+                var items = [].slice.apply(dt.items);
+                this.getEntries(items.map((item) => {
+                    return item.webkitGetAsEntry();
+                }));
+            })
+        ;
     }])
-    .directive('combobox', ['projects', (projects) => {
-        return ($scope, $element, attrs) => {
-            (<any>$scope.projects);
+    .directive('combobox', ['projects', (projects:IProject[]) => {
+        return ($scope: IProjectScope, $element, attrs) => {
+            $scope.projects = projects;
+            $scope.project = projects[0] || {
+                name : '',
+                basePath : '',
+                entries : []
+            };
             $element
                 .on('submit', function () {
-                    (<any>$scope.projects).unshift($scope.project);
+                    $scope.projects.unshift($scope.project);
                     $scope.project = $scope.projects[0];
                     $scope.$apply();
                 })
@@ -50,13 +64,11 @@ angular.module('httpd', [])
                 .find('.del')
                     .on('click', function () {
                         var idx = $scope.projects.indexOf($scope.project);
-                        (<any>$scope.projects).splice(idx, 1);
+                        $scope.projects.splice(idx, 1);
                         $scope.project = undefined;
                     })
                 .end()
             ;
-            $scope.projects = projects;
-            $scope.project = $scope.projects[0] || {};
         };
     }])
     .value('projects', JSON.parse(localStorage['projects'] || null) || [
@@ -68,11 +80,17 @@ angular.module('httpd', [])
         ]
         * */
     ])
-    .controller('settings', [() => {
+    .controller('settings', ['$scope', ($scope) => {
+        $scope.FileDrop = () => {
+            console.log(arguments);
+        };
     }])
-    .controller('index', ['$scope', ($scope) => {
+    .controller('index', ['$scope', 'filedrop', ($scope, filedrop) => {
+        filedrop.getEntries = () => {
+            console.log(arguments)
+        }
     }])
-    .config(['$routeProvider',  ($routeProvider) => {
+    .config(['$routeProvider', ($routeProvider) => {
         $routeProvider
             .when('/settings', {
                 'templateUrl' : 'partials/settings.html',
